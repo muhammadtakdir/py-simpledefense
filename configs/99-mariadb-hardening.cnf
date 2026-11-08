@@ -1,0 +1,6 @@
+[mysqld]
+# Membatasi direktori ekspor/impor berkas database (mencegah eksploitasi SQLi INTO OUTFILE webshell)
+secure_file_priv = /var/lib/mysql-files
+
+# Mengikat koneksi database hanya pada antarmuka lokal (loopback)
+bind-address = 127.0.0.1

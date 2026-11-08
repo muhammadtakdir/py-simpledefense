@@ -1,0 +1,17 @@
+[Unit]
+Description=py-simpledefense - Hybrid WAF Log Monitor & Telegram Alert Service
+After=network-online.target apache2.service
+Wants=network-online.target
+
+[Service]
+Type=simple
+User=root
+EnvironmentFile=-/etc/py-simpledefense/config.env
+ExecStart=/usr/bin/python3 /opt/py-simpledefense/csirt_active_defense.py
+Restart=always
+RestartSec=5
+StandardOutput=journal
+StandardError=journal
+
+[Install]
+WantedBy=multi-user.target

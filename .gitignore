@@ -1,0 +1,17 @@
+# Environment & secrets
+.env
+config.env
+*.env.local
+
+# Python bytecode & virtualenvs
+__pycache__/
+*.py[cod]
+*$py.class
+venv/
+.venv/
+
+# Logs & temporary files
+*.log
+*.bak
+*.swp
+.DS_Store
