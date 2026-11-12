@@ -333,9 +333,72 @@ if [[ -d "/etc/mysql/mariadb.conf.d" ]] || [[ -d "/etc/mysql/conf.d" ]]; then
 fi
 
 # ------------------------------------------------------------------------------
-# 8. Mendaftarkan & Menjalankan Service Systemd
+# 8. Deteksi Cerdas Port Docker & Pengamanan Firewall Interaktif
 # ------------------------------------------------------------------------------
-info "8. Mendaftarkan dan menjalankan service systemd py-simpledefense..."
+if command -v docker >/dev/null 2>&1 && systemctl is-active --quiet docker 2>/dev/null; then
+    info "8. Memeriksa paparan port container Docker..."
+    EXPOSED_DOCKER_PORTS=()
+    while IFS= read -r line; do
+        if [[ -n "${line}" ]]; then
+            EXPOSED_DOCKER_PORTS+=("${line}")
+        fi
+    done < <(docker ps --format '{{.Names}} (Port: {{.Ports}})' 2>/dev/null | grep -E "0\.0\.0\.0:[0-9]+|\[::\]:[0-9]+" || true)
+
+    if [[ ${#EXPOSED_DOCKER_PORTS[@]} -gt 0 ]]; then
+        echo ""
+        warn "   [!] Terdeteksi port container Docker terbuka langsung ke publik:"
+        for cp in "${EXPOSED_DOCKER_PORTS[@]}"; do
+            echo -e "       \e[1;33m• ${cp}\e[0m"
+        done
+        echo ""
+        info "   Catatan Keamanan:"
+        info "   Docker secara bawaan membypass firewall standar (UFW) sehingga port di atas"
+        info "   dapat diakses langsung dari internet tanpa melewati WAF Apache/Nginx."
+        echo ""
+        
+        # Mode interaktif jika dijalankan di terminal tty
+        USER_CHOICE="1"
+        if [[ -t 0 ]]; then
+            echo -e "\e[1;36mPilihan Tindakan Pengamanan:\e[0m"
+            echo "  [1] Kunci port Docker via rantai DOCKER-USER (Hanya izinkan akses lokal & subnet privat) [DIREKOMENDASIKAN]"
+            echo "  [2] Lewati (Biarkan terbuka seperti sekarang)"
+            read -r -p "Pilihan Anda [1/2] (default: 1): " INPUT_CHOICE || true
+            [[ -n "${INPUT_CHOICE}" ]] && USER_CHOICE="${INPUT_CHOICE}"
+        else
+            info "   Mode non-interaktif terdeteksi: menerapkan pengamanan default [1] (DOCKER-USER chain lock)."
+        fi
+
+        if [[ "${USER_CHOICE}" == "1" ]]; then
+            info "   Menerapkan aturan rantai DOCKER-USER di firewall..."
+            if command -v iptables >/dev/null 2>&1; then
+                # Pastikan rantai DOCKER-USER ada (dibuat otomatis oleh Docker)
+                if iptables -L DOCKER-USER -n >/dev/null 2>&1; then
+                    # Ambil daftar port TCP yang terikat ke 0.0.0.0
+                    RAW_PORTS=$(docker ps --format '{{.Ports}}' 2>/dev/null | grep -oE "0\.0\.0\.0:[0-9]+" | cut -d':' -f2 | sort -u || true)
+                    for port in ${RAW_PORTS}; do
+                        # Jangan kunci port web server standar jika docker kebetulan pakai 80/443
+                        if [[ "${port}" != "80" && "${port}" != "443" ]]; then
+                            # Cek apakah sudah ada aturan drop sebelumnya
+                            if ! iptables -C DOCKER-USER -p tcp --dport "${port}" ! -s 127.0.0.1 -j DROP 2>/dev/null; then
+                                iptables -I DOCKER-USER 1 -p tcp --dport "${port}" ! -s 127.0.0.1 -j DROP 2>/dev/null || true
+                                ok "   Port ${port} berhasil dikunci dari akses publik (DOCKER-USER DROP)."
+                            fi
+                        fi
+                    done
+                fi
+            fi
+        else
+            info "   Pengamanan port Docker dilewati sesuai pilihan."
+        fi
+    else
+        ok "   Seluruh container Docker tertutup atau hanya terikat ke localhost."
+    fi
+fi
+
+# ------------------------------------------------------------------------------
+# 9. Mendaftarkan & Menjalankan Service Systemd
+# ------------------------------------------------------------------------------
+info "9. Mendaftarkan dan menjalankan service systemd py-simpledefense..."
 cp -f "${BASE_DIR}/systemd/py-simpledefense.service" "${SERVICE_DEST}"
 chmod 644 "${SERVICE_DEST}"
 systemctl daemon-reload

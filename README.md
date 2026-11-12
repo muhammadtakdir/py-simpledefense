@@ -11,11 +11,13 @@ Menjaga server Linux dengan cara simpel, ringan, dan terukur.
 
 ---
 
-## Yang Baru di Versi 2.0 (Smart Auto-Discovery)
+## Yang Baru di Versi 2.0 & 2.1 (Smart Auto-Discovery & Docker Firewall)
 
+- **Simpel & Ramah Pengguna**: Tujuan utama `py-simpledefense` tetap dipertahankan: melindungi server secara otomatis tanpa mewajibkan admin memahami sintaks rumit regex Apache/Nginx maupun iptables.
 - **Auto-Discovery Seluruh Direktori Web (`DocumentRoot` Scanner)**: Installer secara otomatis memindai seluruh VirtualHost aktif pada Apache dan Nginx (misal: `/var/www/`, `/home/*/public_html/`, `/srv/`, dll) dan langsung melindungi seluruh folder tersebut tanpa perlu konfigurasi manual!
 - **Auto-Discovery Log Multi-Vhost (Log Wildcard / Globbing)**: Otomatis mendeteksi dan memantau seluruh berkas access log (`*access*.log`) dari semua domain/subdomain yang ada di server.
-- **Dukungan Penuh Nginx WAF**: Menyediakan modul snippet WAF siap pakai untuk server berbasis Nginx (`/etc/nginx/snippets/py-simpledefense-waf.conf`).
+- **Deteksi Cerdas Paparan Port Docker & Pengamanan Firewall**: Mendeteksi jika ada container Docker yang membypass firewall host (terikat ke `0.0.0.0`), lalu secara interaktif dan aman menawarkan opsi penguncian via rantai `DOCKER-USER` (default aman: `Enter`).
+- **Dukungan Penuh Nginx & Apache WAF (termasuk Reverse Proxy)**: Menyediakan modul WAF siap pakai baik untuk native web apps maupun container Docker di balik reverse proxy.
 - **Preservasi Token & Konfigurasi Lama**: Saat melakukan upgrade, installer otomatis mempertahankan `TELEGRAM_BOT_TOKEN` dan Chat ID yang sudah aktif sebelumnya.
 - **Zero pip install**: 100% menggunakan Python 3 standard library (`os`, `re`, `json`, `urllib`, `glob`).
 
