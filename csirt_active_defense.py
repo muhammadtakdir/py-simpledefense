@@ -62,6 +62,30 @@ def parse_csv_env(name: str, default: str = "") -> list[str]:
     return [item.strip() for item in raw.split(",") if item.strip()]
 
 
+def expand_log_glob_patterns(patterns: list[str]) -> list[str]:
+    """Mendukung wildcard / globbing pada daftar log (misal: /var/log/apache2/*access*.log)."""
+    import glob
+    expanded: list[str] = []
+    for pat in patterns:
+        if any(char in pat for char in ("*", "?", "[")):
+            matched = glob.glob(pat)
+            if matched:
+                expanded.extend(sorted(matched))
+            else:
+                # Bila belum ada file yang cocok (misal log belum dibuat), tetap simpan polanya
+                expanded.append(pat)
+        else:
+            expanded.append(pat)
+    # Deduplikasi tanpa merusak urutan
+    seen = set()
+    result = []
+    for item in expanded:
+        if item not in seen:
+            seen.add(item)
+            result.append(item)
+    return result
+
+
 SERVER_LABEL = os.environ.get("SERVER_LABEL", "server.example.com")
 SERVER_PUBLIC_IP = os.environ.get("SERVER_PUBLIC_IP", "-")
 TIMEZONE_LABEL = os.environ.get("TIMEZONE_LABEL", "LOCAL")
@@ -69,7 +93,11 @@ TIMEZONE_LABEL = os.environ.get("TIMEZONE_LABEL", "LOCAL")
 TELEGRAM_BOT_TOKEN = os.environ.get("TELEGRAM_BOT_TOKEN", "")
 TELEGRAM_CHAT_IDS = parse_csv_env("TELEGRAM_CHAT_IDS", "")
 
-LOG_FILES = parse_csv_env("LOG_FILES", "/var/log/apache2/access.log")
+_RAW_LOG_FILES = parse_csv_env(
+    "LOG_FILES",
+    "/var/log/apache2/*access*.log,/var/log/nginx/*access*.log,/var/log/apache2/access.log",
+)
+LOG_FILES = expand_log_glob_patterns(_RAW_LOG_FILES)
 WHITELIST_IPS = set(parse_csv_env("WHITELIST_IPS", "127.0.0.1,::1"))
 
 ALERT_COOLDOWN_SECONDS = int(os.environ.get("ALERT_COOLDOWN_SECONDS", "300"))
