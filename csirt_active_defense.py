@@ -14,6 +14,8 @@ Arsitektur Hybrid:
 Lisensi: MIT License - Copyright (c) 2026 Muhammad Takdir
 """
 
+from __future__ import annotations
+
 import argparse
 import datetime
 import json
